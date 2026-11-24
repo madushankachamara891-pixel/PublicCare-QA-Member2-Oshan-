@@ -367,4 +367,43 @@ class ReportControllerTest {
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("RESOLVED")).andExpect(jsonPath("$.hasImage").value(true));
         verify(progressService).create(eq(51L), eq(ReportStatus.RESOLVED), eq("Fixed"), any());
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+            "0,400",
+            "1,201",
+            "2,201",
+            "80,201",
+            "159,201",
+            "160,201",
+            "161,400"
+    })
+    void reportTitleBoundaryTest(int length, int expectedStatus)
+            throws Exception {
+
+        String title = "A".repeat(length);
+
+        if (expectedStatus == 201) {
+            when(service.create(eq(42L), any()))
+                    .thenReturn(new ReportDtos.ReportResponse(
+                            3L, "PC-00000003", title,
+                            "Description", "Road damage", "Galle",
+                            ReportStatus.PENDING, null, 42L,
+                            "Citizen", null, null
+                    ));
+        }
+
+        mvc.perform(post("/api/reports")
+                        .with(csrf())
+                        .with(authentication(citizen()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {
+                        "title":"%s",
+                        "description":"Description",
+                        "category":"Road damage",
+                        "location":"Galle"
+                    }
+                    """.formatted(title)))
+                .andExpect(status().is(expectedStatus));
+    }
 }

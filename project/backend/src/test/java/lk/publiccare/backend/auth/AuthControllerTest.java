@@ -134,4 +134,37 @@ class AuthControllerTest {
         mockMvc.perform(get("/api/admin/issues").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("admin@example.com").roles("ADMIN")))
                 .andExpect(status().isNotFound());
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+            "Test Citizen,citizen@example.com,16,201",
+            "Test Citizen,citizen@example.com,8,400",
+            "Test Citizen,citizen@example.com,73,400",
+            "Test Citizen,invalid-email,16,400",
+            "'',citizen@example.com,16,400"
+    })
+    void registrationEquivalencePartitionTest(
+            String name, String email,
+            int passwordLength, int expectedStatus)
+            throws Exception {
+
+        String password = "A".repeat(passwordLength);
+
+        if (expectedStatus == 201) {
+            when(authService.register(any()))
+                    .thenReturn(citizen());
+        }
+
+        mockMvc.perform(post("/api/auth/register")
+                        .with(org.springframework.security.test.web.servlet
+                                .request.SecurityMockMvcRequestPostProcessors.csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {
+                        "fullName":"%s",
+                        "email":"%s",
+                        "password":"%s"
+                    }
+                    """.formatted(name, email, password)))
+                .andExpect(status().is(expectedStatus));
+    }
 }
